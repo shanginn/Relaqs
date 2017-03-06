@@ -2,7 +2,6 @@
 
 namespace Shanginn\Relaqs\Eloquent;
 
-use App\EventInstance;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Model;
@@ -21,21 +20,20 @@ use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 
-use Shanginn\Relaqs\Eloquent\Concerns\GetRelationships;
+use Shanginn\Relaqs\Eloquent\Concerns\FillableRelations;
 
 /**
- * Class Relaqs
- * @package Shanginn\Relaqs\Eloquent
  * @mixin Model
  */
-trait Relaqs 
+trait Relaqs
 {
-    use GetRelationships;
+    use FillableRelations;
 
     protected static $orderedRelations = [
         BelongsTo::class,
         HasManyThrough::class,
         HasMany::class,
+        HasOne::class,
         BelongsToMany::class
     ];
 
@@ -46,35 +44,55 @@ trait Relaqs
      */
     protected static $createdRelationships = [];
 
+    /**
+     * The relations that are mass assignable.
+     *
+     * @var array
+     *
+     protected $fillableRelations = ['*'];
+     */
+
     static function bootRelaqs()
     {
-        static::saving(function (Model $model) {
-
+        static::registerModelEvent('booted', function(Model $model) {
+            /** $model @mixin FillableRelations */
+            if (static::filterRelationsByNames(
+                $model->getFillable(), $model->getFillableRelations()
+            )) {
+                throw new Exceptions\FillableAttributeConflictsException;
+            }
         });
 
         static::saved(function (Model $model) {
-            if (method_exists($model, 'filterRelationsByNames') && method_exists($model, 'getAvailableRelations')) {
-                $newRelationships = $model->filterRelationsByNames($model->getAvailableRelations(), $model->relations);
+            dump($model->relations);
+            $newRelationships = $model->filterRelationsByNames(
+                $model->getAvailableRelations(),
+                $model->relations
+            );
 
-                foreach ($newRelationships as $relation => $relationship) {
-                    /** @var Relation $related */
-                    $related = $model->$relation();
+            foreach ($newRelationships as $relation => $relationship) {
+                /** @var Relation $related */
+                $related = $model->$relation();
 
-                    switch (get_class($related)) {
-                        case HasOne::class:
-                        case HasMany::class:
-                        case BelongsToMany::class:
-                            $method = 'saveMany';
-                            break;
-                        case BelongsTo::class:
-                            $method = 'associate';
-                            break;
-                    }
-                    if (method_exists($related, $method)) {
-                        $related->$method($relationship);
-                    } else {
-                        dd('FATALISHE');
-                    }
+                switch (get_class($related)) {
+                    case HasOne::class:
+                        $method = 'save';
+                        break;
+                    case HasMany::class:
+                    case BelongsToMany::class:
+                        $method = 'saveMany';
+                        break;
+                    case BelongsTo::class:
+                        $method = 'associate';
+                        break;
+                    default:
+                        $method = null;
+                }
+
+                if (method_exists($related, $method)) {
+                    $related->$method($relationship);
+                } else {
+                    dd('FATALISHE');
                 }
             }
         });
@@ -90,8 +108,8 @@ trait Relaqs
      */
     public function fill(array $attributes)
     {
-        // Intersection between given attributes and available relations
-        if ($fillableRelations = $this->filterRelationsByNames($attributes)) {
+        // Available relations in the given attributes
+        if ($fillableRelations = $this->fillableRelationsFromArray($attributes)) {
             // We need to create relationships in strict order
             foreach (static::$orderedRelations as $relationClass) {
                 // Check this Relation type for the handler presence
@@ -100,7 +118,7 @@ trait Relaqs
                 // Perform relation creating class by class
                 ($relations = $this->filterRelationsByType($relationClass, $fillableRelations)) &&
 
-                // Apply handler to the relation
+                // Apply handler to each relation
                 array_walk($relations, function ($relation) use ($relationHandler, &$attributes) {
                     ($relationData = $attributes[$relation] ?? false) &&
                     $this->handleRelationship($relationHandler, $relation, $relationData, $attributes);
@@ -140,6 +158,20 @@ trait Relaqs
         $relationship->associate($relatedModel);
 
         $this->addCreatedRelationship($relationData, $relatedModel);
+    }
+
+    /**
+     * @param string $relation
+     * @param array $relationData
+     */
+    protected function handleHasOne($relation, array $relationData)
+    {
+        /** @var Model $relatedModel */
+        $relatedModel = $this->createRelatedModel($relation, $relationData);
+
+        $this->setRelation($relation, $relatedModel);
+
+        $this->addCreatedRelationship($relationData, $this);
     }
 
     /**
