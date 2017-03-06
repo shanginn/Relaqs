@@ -64,7 +64,6 @@ trait Relaqs
         });
 
         static::saved(function (Model $model) {
-            dump($model->relations);
             $newRelationships = $model->filterRelationsByNames(
                 $model->getAvailableRelations(),
                 $model->relations
