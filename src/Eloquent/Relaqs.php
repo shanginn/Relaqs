@@ -98,12 +98,7 @@ trait Relaqs
     }
 
     /**
-     * Fill the model with an array of attributes.
-     *
-     * @param  array  $attributes
-     * @return $this
-     *
-     * @throws \Illuminate\Database\Eloquent\MassAssignmentException
+     * {@inheritdoc}
      */
     public function fill(array $attributes)
     {
