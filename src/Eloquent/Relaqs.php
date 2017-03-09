@@ -190,7 +190,7 @@ trait Relaqs
     {
         foreach ($relationData as $data) {
             /** @var Model $relatedModel */
-            $relatedModel = $this->newRelatedModel($relation, $data);
+            $relatedModel = $this->getRelatedModel($relation, $data);
 
             $this->$relation->add($relatedModel);
 
@@ -226,7 +226,7 @@ trait Relaqs
 
     public function createRelatedModel(string $relation, array $attributes = [])
     {
-        return tap($this->newRelatedModel($relation, $attributes),
+        return tap($this->getRelatedModel($relation, $attributes),
             function(Model $related) {
                 $related->save();
             }
@@ -236,6 +236,15 @@ trait Relaqs
     public function newRelatedModel(string $relation, array $attributes = [])
     {
         return $this->$relation()->getRelated()->newInstance()->fill($attributes);
+    }
+
+    public function getRelatedModel(string $relation, array $attributes = [])
+    {
+        $related = $this->$relation()->getRelated();
+
+        return isset($attributes['id']) && !is_null($model = $related->find($attributes['id'])) ?
+            $model->fill($attributes) :
+            $this->newRelatedModel($relation, $attributes);
     }
 
     //---
