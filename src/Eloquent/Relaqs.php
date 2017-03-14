@@ -94,6 +94,8 @@ trait Relaqs
                     dd('FATALISHE');
                 }
             }
+
+            $model->load(array_keys($newRelationships));
         });
     }
 
