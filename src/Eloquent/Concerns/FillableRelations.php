@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 trait FillableRelations
 {
     /**
-     * Available relationships for the model.
+     * Available relationships for the models.
      *
      * @var array
      */
