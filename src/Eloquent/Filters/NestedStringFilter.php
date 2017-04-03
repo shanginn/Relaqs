@@ -1,6 +1,6 @@
 <?php
 
-namespace RickTap\Qriteria\Filters;
+namespace Shanginn\Relaqs\Eloquent\Filters;
 
 use RickTap\Qriteria\Interfaces\Filter as FilterInterface;
 use Illuminate\Database\Eloquent\Builder;
