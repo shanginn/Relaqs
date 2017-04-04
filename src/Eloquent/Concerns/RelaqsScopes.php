@@ -4,7 +4,7 @@ namespace Shanginn\Relaqs\Eloquent\Concerns;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use RickTap\Qriteria\Filters\NestedStringFilter;
+use Shanginn\Relaqs\Eloquent\Filters\NestedStringFilter;
 
 /**
  * @mixin Model
@@ -41,19 +41,8 @@ trait RelaqsScopes
 
     public static function addFiltersScope($filters)
     {
-        //$filtersArray = [];
-        preg_match_all(
-            '/ (\(*) (.*?):(.*?):(.*?)(\)*) ([,|]|$) /x',
-            $filters,
-            $filtersArray,
-            PREG_SET_ORDER
-        );
-
-        dd($filtersArray);
-
         static::addGlobalScope(function (Builder $builder) use ($filters) {
-            $filter = new NestedStringFilter($filters);
-            $filter->filterOn($builder);
+            (new NestedStringFilter($filters))->applyTo($builder);
         });
     }
 

@@ -2,162 +2,188 @@
 
 namespace Shanginn\Relaqs\Eloquent\Filters;
 
-use RickTap\Qriteria\Interfaces\Filter as FilterInterface;
 use Illuminate\Database\Eloquent\Builder;
-use RickTap\Qriteria\Support\Parentheses;
-use RickTap\Qriteria\Exceptions\UnbalancedParenthesesException;
-use RickTap\Qriteria\Filters\Support\FilterContext;
+use Shanginn\Relaqs\Eloquent\Exceptions\TooMuchColumnDelimitersException;
+use Shanginn\Relaqs\Eloquent\Exceptions\UnbalancedParenthesesException;
 
-/**
- * @implements RickTap\Qriteria\Filter
- */
-class NestedStringFilter implements FilterInterface
+class NestedStringFilter
 {
+    const OPEN_BRACKET = '(';
+    const CLOSE_BRACKET = ')';
+    const COLUMN_DELIMITER = ':';
+    const OR_SIGN = '|';
+    const AND_SIGN = ',';
+    const ESCAPE_CHAR = '\\';
+    const ARRAY_DELIMITER = ' ';
+
     /**
-     * Unprocessed list of filters.
+     * Unprocessed string with filters
      *
      * @var string
      */
-    protected $filterRequest;
+    protected $filterString;
 
     /**
-     * Holds the context of recursively called filterNested.
+     * Current position in the $filterString
      *
-     * @var \RickTap\Qriteria\Filters\Support\FilterContext
+     * @var int
      */
-    protected $context;
+    protected $position = 0;
 
-    public function __construct($filterRequest)
+    /**
+     * NestedStringFilter constructor.
+     *
+     * @param string $filterString
+     *
+     * @throws UnbalancedParenthesesException
+     */
+    public function __construct(string $filterString)
     {
-        if (is_string($filterRequest)) {
-            $this->filterRequest = $filterRequest;
-            if (!Parentheses::isBalanced($filterRequest)) {
-                throw new UnbalancedParenthesesException();
-            }
+        if (!$this->checkParenthesesBalance($filterString)) {
+            throw new UnbalancedParenthesesException;
         }
+
+        $this->filterString = $filterString;
     }
 
-    /**
-     * Translates the $filterRequest property into commands and runs them on
-     * the query object.
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder $query Query Object
-     * @return null
-     */
-    public function filterOn(Builder $query)
+    public function applyTo(Builder $query)
     {
-        $this->filterNested(new FilterContext($query));
+        // Encapsulated method to prevent unexpected
+        // changes of the position.
+        return $this->performOn($query);
     }
 
-    /**
-     * Recursive method, that is controlled by a context object.
-     * It translates the filter request into nested commands.
-     *
-     * @param  \RickTap\Qriteria\Filters\Support\FilterContext $context
-     * @return null
-     */
-    protected function filterNested(FilterContext $context)
+    protected function performOn(Builder $query)
     {
-        $this->context = $context;
+        // Initial empty filters array
+        $filter = $this->initFilterArray();
 
-        // Iterate over each character of the filter string
-        while ($this->context->position < strlen($this->filterRequest)) {
-            $char = $this->getChar();
-            switch ($char) {
-                case '(':
-                    $this->processNextLevel();
+        // Default boolean for next Where operation
+        $nextBoolean = 'and';
+
+        // We will go through filter string only once
+        // char by char to build and execute
+        // (maybe) nested where queries.
+        while ($this->position < strlen($this->filterString)) {
+            switch ($char = $this->filterString[$this->position++]) {
+                // It means we stepping into group of filters
+                // so we call this function recursively
+                // on a newly created nested query
+                case static::OPEN_BRACKET:
+                    $query->where(function (Builder $query) {
+                        $this->performOn($query);
+                    }, null, null, $nextBoolean);
                     break;
-                case ')':
-                    $this->executeQueryAndResetCommand();
+
+                // Finish nested query and exit the loop.
+                // (We are inside nested call right now,
+                // so we can do it safely).
+                case static::CLOSE_BRACKET:
+                    $this->executeQueryAndResetFilter($query, $filter, $nextBoolean);
                     break 2;
-                case ',':
-                case '|':
-                    $this->executeQueryAndResetCommand();
-                    $this->setNextOperation($char === ',' ? "AND" : "OR");
+
+                // This symbols means, that we has successfully
+                // built $filter array and can perform query.
+                // And choose boolean for the next one.
+                case static::OR_SIGN:
+                case static::AND_SIGN:
+                    $this->executeQueryAndResetFilter($query, $filter, $nextBoolean);
+                    $nextBoolean = $char === static::AND_SIGN ? 'and' : 'or';
                     break;
+
+                // When we reach column delimiter we try
+                // to fill next sector in the $filer
+                // Column, operator or value
+                case static::COLUMN_DELIMITER:
+                    // But can't understand more than 2 column delimiters
+                    // in context of the one filter.
+                    if (next($filter) === false) {
+                        throw new TooMuchColumnDelimitersException;
+                    }
+                    break;
+
+                // Just increment position counter and
+                // append next char to the filter.
+                case static::ESCAPE_CHAR:
+                    $char = $this->filterString[$this->position++];
+                    // In case of backslash we will append any next char to the filter
+
+                // Every other symbol will go to corresponding
+                // segment of the $filter array
                 default:
-                    $this->appendCharToCommand($char);
+                    $filter[key($filter)] .= $char;
             }
-            $this->context->position++;
         }
 
-        if (strlen($this->context->command) > 0) {
-            $this->executeQueryAndResetCommand();
+        // Execute query In case there is
+        // anything left in the $filter
+        $this->executeQueryAndResetFilter($query, $filter, $nextBoolean);
+
+        return $query;
+    }
+
+    protected function executeQueryAndResetFilter(Builder $query, array &$filter, string $boolean)
+    {
+        // If filter is fully stacked
+        // and has 3 extracted variables
+        if (key($filter) === 'value' && extract($filter) === 3) {
+            /**
+             * Variables extracted from $filter array
+             *
+             * @var string $column
+             * @var string $operator
+             * @var string $value
+             */
+            $column = snake_case($column);
+
+            if ($column && $operator && strlen($value)) {
+                if ($operator === 'in' || ($operator === '!in' && $not = true)) {
+                    $value = explode(static::ARRAY_DELIMITER, $value);
+                    $query->whereIn($column, $value, $boolean, $not ?? false);
+                } else {
+                    $query->where($column, $operator, $value, $boolean);
+                }
+            }
+
+            $filter = $this->initFilterArray();
         }
     }
 
-    /**
-     * Calls the filterNested method with a new context inside a nested query.
-     *
-     * @return null
-     */
-    protected function processNextLevel()
+    protected function initFilterArray()
     {
-        // make a backup of the current context
-        $backup = $this->context;
-
-        $this->context->query->where(function ($query) use ($backup) {
-            $context = new FilterContext($query, $backup->position + 1);
-            $this->filterNested($context);
-
-            // restore the old context and fget the new position
-            $this->context = $backup;
-            $this->context->position = $context->position + 1;
-
-            return $context->query;
-        });
+        return ['column' => '', 'operator' => '', 'value' => ''];
     }
 
     /**
-     * Executes the query defined inside the context command and
-     * then resets the context commands.
+     * Checks amount of open and closed parentheses,
+     * also if they the are in the right order.
+     * Nesting and other symbols are allowed.
      *
-     * @return null
+     * @param  string  $string String to test the balance on.
+     * @return boolean (true: balanced | false: unbalanced)
      */
-    protected function executeQueryAndResetCommand()
+    protected function checkParenthesesBalance($string)
     {
-        list($column, $operator, $value) = explode(":", $this->context->command);
+        // Keep track of number of open parens
+        $open = 0;
 
-        $column = snake_case($column);
+        // Loop through each char
+        for ($i = 0; $i < strlen($string); $i++) {
+            $char = $string[$i];
+            switch ($char) {
+                case static::OPEN_BRACKET:
+                    $open++;
+                    break;
+                case static::CLOSE_BRACKET:
+                    $open--;
+                    if ($open < 0) {
+                        return false;
+                    }
+                    break;
+            }
+        }
 
-        $this->context->query->where(
-            $column,
-            $operator,
-            $value,
-            $this->context->operation
-        );
-        $this->context->command = "";
-    }
-
-    /**
-     * Grabs a single character from the filterRequest at
-     * the context position.
-     *
-     * @return char Single character from filterRequest
-     */
-    public function getChar()
-    {
-        return $this->filterRequest[$this->context->position];
-    }
-
-    /**
-     * Builds up the command string char by char.
-     *
-     * @param  char $char Single Character
-     * @return null
-     */
-    protected function appendCharToCommand($char)
-    {
-        $this->context->command .= $char;
-    }
-
-    /**
-     * Sets the next operation glue to 'AND' or 'OR'.
-     *
-     * @return null
-     */
-    protected function setNextOperation($nxtOp)
-    {
-        $this->context->operation = $nxtOp;
+        // there must be an equal amount of opened and closed parens
+        return ($open === 0);
     }
 }

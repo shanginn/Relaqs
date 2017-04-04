@@ -18,7 +18,7 @@ class FillableAttributeConflictsException extends RuntimeException
         $class = get_class($model);
 
         return new static("
-            Attribute $relation conflicts with the $relation relation in the $class class.
+            Attribute '$relation' conflicts with the '$relation' relation in the $class class.
         
             You can't name attribute same as defined relation.
             If you need to define fillable relation, do in 
