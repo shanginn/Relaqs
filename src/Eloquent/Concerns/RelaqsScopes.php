@@ -45,9 +45,4 @@ trait RelaqsScopes
             (new NestedStringFilter($filters))->applyTo($builder);
         });
     }
-
-    protected static function addFilterScope($filters)
-    {
-
-    }
 }
