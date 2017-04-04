@@ -14,8 +14,9 @@ trait RelaqsScopes
 {
     public static function addFieldsScope($fields)
     {
-        $columns = array_values(array_intersect(static::getColumns(), $fields)) + ['id'];
-        $with = array_values(array_intersect($fields, array_keys((new static)->getEagerLoads())));
+        $model = new static;
+        $columns = array_values(array_intersect(static::getColumns(), $fields)) + [$model->getKeyName()];
+        $with = array_values(array_intersect($fields, array_keys($model->getEagerLoads())));
 
         static::addGlobalScope(function (Builder $builder) use ($columns, $with) {
             $table = $builder->getQuery()->from;
