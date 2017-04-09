@@ -5,7 +5,11 @@ namespace Shanginn\Relaqs\Eloquent\Concerns;
 use ReflectionClass;
 use ReflectionMethod;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @mixin Model
+ */
 trait FillableRelations
 {
     /**
@@ -37,7 +41,8 @@ trait FillableRelations
                     ($result = array_merge($result, [$method->getName() => $returnType]));
 
                     return $result;
-                }, []
+                },
+                []
             )
         );
     }

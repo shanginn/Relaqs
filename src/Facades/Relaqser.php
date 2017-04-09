@@ -4,7 +4,7 @@ namespace Shanginn\Relaqs\Facades;
 
 use Illuminate\Support\Facades\Facade;
 
-class Relaqs extends Facade
+class Relaqser extends Facade
 {
     /**
      * Get the registered name of the component.
@@ -13,6 +13,6 @@ class Relaqs extends Facade
      */
     protected static function getFacadeAccessor()
     {
-        return 'relaqs';
+        return 'relaqs.relaqser';
     }
 }
