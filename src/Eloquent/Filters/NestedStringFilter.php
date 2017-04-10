@@ -31,19 +31,28 @@ class NestedStringFilter
     protected $position = 0;
 
     /**
+     * List of the table fields with types
+     *
+     * @var array
+     */
+    protected $fields;
+
+    /**
      * NestedStringFilter constructor.
      *
      * @param string $filterString
      *
+     * @param array $fields
      * @throws UnbalancedParenthesesException
      */
-    public function __construct(string $filterString)
+    public function __construct(string $filterString, array $fields = [])
     {
         if (!$this->checkParenthesesBalance($filterString)) {
             throw new UnbalancedParenthesesException;
         }
 
         $this->filterString = $filterString;
+        $this->fields = $fields;
     }
 
     public function applyTo(Builder $query)
@@ -136,12 +145,30 @@ class NestedStringFilter
              */
             $column = snake_case($column);
 
+            if (($this->fields[$column] ?? false) === 'jsonb' && $operator === 'in') {
+                $operator = '?|';
+            }
+
             if ($column && $operator && strlen($value)) {
-                if ($operator === 'in' || ($operator === '!in' && $not = true)) {
-                    $value = explode(static::ARRAY_DELIMITER, $value);
-                    $query->whereIn($column, $value, $boolean, $not ?? false);
-                } else {
-                    $query->where($column, $operator, $value, $boolean);
+                switch ($operator) {
+                    case '!in':
+                        $not = true;
+                        // Proceed just like 'in'
+                    case 'in':
+                        $value = explode(static::ARRAY_DELIMITER, $value);
+                        $query->whereIn($column, $value, $boolean, $not ?? false);
+
+                        break;
+                    case '?|':
+                        $value = sprintf(
+                            '{%s}',
+                            str_replace(static::ARRAY_DELIMITER, ',', $value)
+                        );
+
+                        // In case of search in array we need to
+                        // convert value to PostgreSQL array
+                    default:
+                        $query->where($column, $operator, $value, $boolean);
                 }
             }
 

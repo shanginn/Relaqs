@@ -24,7 +24,8 @@ trait RelaqsScopes
             // Reset all other eager loadings
             $builder
                 ->addSelect(array_map(function ($column) use ($table) {
-                    return $table . '.' . $column;
+                    //return $table . '.' . $column;
+                    return $column;
                 }, $columns))
                 ->setEagerLoads([])
                 ->with($with);
@@ -33,6 +34,8 @@ trait RelaqsScopes
 
     public static function addOrderByScope($orders)
     {
+        $orders = array_intersect(static::getColumns(), array_keys($orders));
+
         static::addGlobalScope(function (Builder $builder) use ($orders) {
             foreach ($orders as $column => $rules) {
                 $builder->orderBy($column, $rules['direction']);
@@ -40,10 +43,10 @@ trait RelaqsScopes
         });
     }
 
-    public static function addFiltersScope($filters)
+    public static function addFiltersScope($filterString, $fields = [])
     {
-        static::addGlobalScope(function (Builder $builder) use ($filters) {
-            (new NestedStringFilter($filters))->applyTo($builder);
+        static::addGlobalScope(function (Builder $builder) use ($filterString, $fields) {
+            (new NestedStringFilter($filterString, $fields))->applyTo($builder);
         });
     }
 }
