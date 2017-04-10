@@ -34,7 +34,7 @@ trait RelaqsScopes
 
     public static function addOrderByScope($orders)
     {
-        $orders = array_intersect(static::getColumns(), array_keys($orders));
+        $orders = array_intersect_key($orders, array_flip(static::getColumns()));
 
         static::addGlobalScope(function (Builder $builder) use ($orders) {
             foreach ($orders as $column => $rules) {
