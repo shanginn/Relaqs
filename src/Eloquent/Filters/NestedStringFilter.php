@@ -145,8 +145,15 @@ class NestedStringFilter
              */
             $column = snake_case($column);
 
-            if (($this->fields[$column] ?? false) === 'jsonb' && $operator === 'in') {
-                $operator = '?|';
+            if (($this->fields[$column] ?? false) === 'jsonb') {
+                switch ($operator) {
+                    case 'in':
+                        $operator = '?|';
+                        break;
+                    case 'in!':
+                        $operator = '?&';
+                        break;
+                }
             }
 
             if ($column && $operator && strlen($value)) {
@@ -160,6 +167,7 @@ class NestedStringFilter
 
                         break;
                     case '?|':
+                    case '?&':
                         $value = sprintf(
                             '{%s}',
                             str_replace(static::ARRAY_DELIMITER, ',', $value)

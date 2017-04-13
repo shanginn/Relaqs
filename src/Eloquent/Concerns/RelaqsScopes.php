@@ -24,7 +24,8 @@ trait RelaqsScopes
             // Reset all other eager loadings
             $builder
                 ->addSelect(array_map(function ($column) use ($table) {
-                    //return $table . '.' . $column;
+                    //TODO: Ambiguous column if has orderBy
+                    return $table . '.' . $column;
                     return $column;
                 }, $columns))
                 ->setEagerLoads([])

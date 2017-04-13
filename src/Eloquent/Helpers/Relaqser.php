@@ -102,6 +102,6 @@ class Relaqser
 
     public static function getLimitFromRequest()
     {
-        return Request::get('limit', 10);
+        return (int) Request::get('limit', 10);
     }
 }
