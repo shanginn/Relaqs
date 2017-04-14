@@ -104,4 +104,48 @@ class Relaqser
     {
         return (int) Request::get('limit', 10);
     }
+
+    /**
+     * Converts array keys from snake_case to camelCase
+     *
+     * @param array $array
+     * @return array
+     */
+    public static function camelizeArray(array $array)
+    {
+        return array_reduce(
+            array_keys($array),
+            function ($result, $key) use ($array) {
+                $result[self::camelizeStr($key)] = is_array($value = $array[$key]) ?
+                    self::camelizeArray($value) : $value;
+                return $result;
+            },
+            []
+        );
+    }
+
+    /**
+     * Converts string from snake_case to camelCase
+     *
+     * @param string $key
+     * @return string
+     */
+    public static function camelizeStr(string $key)
+    {
+        return lcfirst(implode('', array_map('ucfirst', explode('_', $key))));
+    }
+
+    /**
+     * Add prefix to each keys of the array
+     *
+     * @param array $array
+     * @param $prefix
+     * @return array
+     */
+    public static function prefixKeys(array $array, $prefix)
+    {
+        return array_combine(array_map(function ($key) use ($prefix) {
+            return $prefix . $key;
+        }, array_keys($array)), array_values($array));
+    }
 }

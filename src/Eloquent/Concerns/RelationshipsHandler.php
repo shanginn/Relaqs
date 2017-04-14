@@ -2,44 +2,119 @@
 
 namespace Shanginn\Relaqs\Eloquent\Concerns;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 /**
  * @mixin Model
  */
 trait RelationshipsHandler
 {
+    protected static $relationsOrder = [
+        BelongsToMany::class,
+        HasManyThrough::class,
+        BelongsTo::class,
+        HasMany::class,
+        HasOne::class,
+    ];
 
+    protected function toOrderedRelationsWithHandlers(array $relations)
+    {
+        return call_user_func_array(
+            'array_merge',
+            array_reduce(array_keys($relations), function ($handlers, $relation) use ($relations) {
+                if ($handler = $this->getHandlerForRelation($relation)) {
+                    $handlers[$relations[$relation]][$relation] = $handler;
+                }
+
+                return $handlers;
+            }, array_fill_keys(static::$relationsOrder, []))
+        );
+    }
 
     /**
-     * @param $relationType
+     * @param $relation
      *
      * @return bool|string
      */
-    protected function getRelationHandlerName($relationType)
+    protected function getHandlerForRelation($relation)
     {
-        return method_exists($this, $relationHandler = 'handle' . $relationType)
-            ? $relationHandler : false;
+        /** @var Relation $related */
+        $related = $this->$relation();
+
+        return
+            // First we will try to find specific handler for this relation.
+            // For relation defined by function named 'city' we will look
+            // for method named handleCityRelationship()
+           $this->getRelationHandlerByRelationName($relation)
+
+           // Then we will look for handler, specified for the related model
+           // If our 'city' relation refers to 'City' model, we will look
+           // for method named handleRelatedCity()
+           ?? $this->getRelationHandlerByRelatedModelClass($related->getRelated())
+
+           // Lastly we will look for generic handler for this relation type
+           // If the 'city' relation is 'HasMany' relation, we will look
+           // for method named handleHasMany()
+           ?? $this->getRelationHandlerByRelationClass(get_class($related));
+    }
+
+    /**
+     * @param $relationName
+     *
+     * @return bool|string
+     */
+    private function getRelationHandlerByRelationName($relationName)
+    {
+        return method_exists($this, $relationHandler = 'handle' . ucfirst($relationName) . 'Relationship')
+            ? $relationHandler : null;
+    }
+
+    /**
+     * @param $relatedModelClass
+     *
+     * @return bool|string
+     */
+    private function getRelationHandlerByRelatedModelClass($relatedModelClass)
+    {
+        return method_exists($this, $relationHandler = 'handleRelated' . class_basename($relatedModelClass))
+            ? $relationHandler : null;
+    }
+
+    /**
+     * @param $relationClass
+     *
+     * @return bool|string
+     */
+    private function getRelationHandlerByRelationClass($relationClass)
+    {
+        return method_exists($this, $relationHandler = 'handle' . class_basename($relationClass))
+            ? $relationHandler : null;
     }
 
     protected function handleRelationship($relationHandler, $relation, $relationData, &$attributes)
     {
+        //dump($relationData);
         // Check if this relationship has been created before
         // And linked with UUID
-        ($uuid = $relationData['uuid'] ?? false) &&
+        ($uuid = $relationData['uuid'] ?? false)
 
-        // Attempt to get created relationship by UUID
-        ($relationship = $this->getCreatedRelationshipByUUID($uuid)) &&
+            // Attempt to get created relationship by UUID
+            && ($relationship = $this->getCreatedRelationshipByUUID($uuid))
 
-        // Insert key of the related model into attributes
-        // and remove relationship itself
-        $this->swapRelationshipToKey($relation, $relationship, $attributes) ||
+                // Insert key of the related model into attributes
+                // and remove relationship itself
+                && $this->swapRelationshipToKey($relation, $relationship, $attributes)
 
         // Create relationship if it does not exists already
-        $this->$relationHandler($relation, $relationData);
+        || $this->addCreatedRelationships($this->$relationHandler($relationData, $relation));
     }
 
     /**
@@ -63,85 +138,111 @@ trait RelationshipsHandler
     }
 
     /**
+     * @param array|int  $relationData
      * @param string $relation
-     * @param array $relationData
+     *
+     * @return array
      */
-    protected function handleBelongsTo($relation, array $relationData)
+    protected function handleBelongsTo($relationData, $relation)
     {
         /** @var Model $relatedModel */
         $relatedModel = $this->createRelatedModel($relation, $relationData);
 
         /** @var BelongsTo $related */
         $related = $this->$relation();
-
         $related->associate($relatedModel);
 
-        $this->addCreatedRelationship($relationData, $relatedModel);
+        return $this->storeRelationship($relationData, $relatedModel);
     }
 
     /**
+     * @param array|int  $relationData
      * @param string $relation
-     * @param array $relationData
+     *
+     * @return array
      */
-    protected function handleHasOne($relation, array $relationData)
+    protected function handleHasOne($relationData, $relation)
     {
         /** @var Model $relatedModel */
         $relatedModel = $this->getRelatedModel($relation, $relationData);
 
         $this->setRelation($relation, $relatedModel);
 
-        $this->addCreatedRelationship($relationData, $this);
+        return $this->storeRelationship($relationData, $this);
     }
 
 
     /**
+     * @param array|int  $relationData
      * @param string $relation
-     * @param array $relationData
+     *
+     * @return array
      */
-    protected function handleHasMany($relation, array $relationData)
+    protected function handleHasMany($relationData, $relation)
     {
-        $this->setRelation($relation, array_map(function ($data) use ($relation) {
+        $createdRelationships = [];
+
+        $this->setRelation($relation, array_map(function ($data) use ($relation, $createdRelationships) {
             /** @var Model $relatedModel */
             $relatedModel = $this->getRelatedModel($relation, $data);
 
-            if (is_array($data)) {
-                $this->addCreatedRelationship($data, $relatedModel);
-            }
+            $this->storeRelationship($data, $relatedModel, $createdRelationships);
 
             return $relatedModel;
         }, $relationData));
+
+        return $createdRelationships;
     }
 
     /**
+     * @param array|int  $relationData
      * @param string $relation
-     * @param array $relationData
+     *
+     * @return array
      */
-    protected function handleHasManyThrough($relation, array $relationData)
+    protected function handleHasManyThrough($relationData, $relation)
     {
+        $createdRelationships = [];
+
         foreach ($relationData as $data) {
             /** @var Model $relatedModel */
             $relatedModel = $this->createRelatedModel($relation, $data);
 
-            $this->addCreatedRelationship($data, $relatedModel);
+            $this->storeRelationship($data, $relatedModel, $createdRelationships);
         }
+
+        return $createdRelationships;
     }
 
     /**
+     * @param array|int  $relationData
      * @param string $relation
-     * @param array $relationData
+     *
+     * @return array
      */
-    protected function handleBelongsToMany($relation, array $relationData)
+    protected function handleBelongsToMany($relationData, $relation)
     {
-        $this->setRelation($relation, array_map(function ($data) use ($relation) {
+        $createdRelationships = [];
+
+        $this->setRelation($relation, array_map(function ($data) use ($relation, $createdRelationships) {
             /** @var Model $relatedModel */
             $relatedModel = $this->createRelatedModel($relation, $data);
 
             if (is_array($data)) {
-                $this->addCreatedRelationship($data, $relatedModel);
+                $this->storeRelationship($data, $relatedModel, $createdRelationships);
             }
 
             return $relatedModel;
         }, $relationData));
+
+        return $createdRelationships;
+    }
+
+    protected function addCreatedRelationships(array $relationships)
+    {
+        foreach ($relationships as $uuid => $relatedModel) {
+            static::$createdRelationships[$uuid] = $relatedModel;
+        }
     }
 
     /**
@@ -150,12 +251,17 @@ trait RelationshipsHandler
      *
      * @param array $data
      * @param Model $model
+     * @param array $storage
+     *
+     * @return array
      */
-    protected function addCreatedRelationship(array $data, Model &$model)
+    protected function storeRelationship($data, Model &$model, array &$storage = [])
     {
-        if (isset($data['uuid'])) {
-            static::$createdRelationships[$data['uuid']] = $model;
+        if (is_array($data) && array_key_exists('uuid', $data)) {
+            $storage[$data['uuid']] = $model;
         }
+
+        return $storage;
     }
 
     /**
@@ -192,7 +298,8 @@ trait RelationshipsHandler
         $related = $this->$relation()->getRelated();
 
         $relatedKey = is_int($attributes) ?
-            $attributes : $attributes[$related->getKeyName()] ?? false;
+            $attributes : $attributes[$related->getKeyName()]
+                ?? false;
 
         return ($relatedKey && $model = $related->findOrFail($relatedKey)) ?
             (is_array($attributes) ? $model->fill($attributes) : $model) :

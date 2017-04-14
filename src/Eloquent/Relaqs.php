@@ -33,14 +33,6 @@ trait Relaqs
     use RelationshipsHandler;
     use RelaqsScopes;
 
-    protected static $orderedRelations = [
-        BelongsToMany::class,
-        HasManyThrough::class,
-        BelongsTo::class,
-        HasMany::class,
-        HasOne::class,
-    ];
-
     /**
      * The array of uuids of the created models.
      *
@@ -59,6 +51,7 @@ trait Relaqs
     static function bootRelaqs()
     {
         static::registerModelEvent('booted', function (Model $model) {
+            /** @var Relaqs $model */
             if (static::filterRelationsByNames(
                 $model->getFillable(),
                 $model->getFillableRelations()
@@ -68,27 +61,38 @@ trait Relaqs
         });
 
         static::saved(function (Model $model) {
+            /** @var Relaqs $model */
             $newRelationships = $model->filterRelationsByNames(
                 $model->getAvailableRelations(),
                 $model->relations
             );
 
             foreach ($newRelationships as $relation => $relationship) {
-                if (($related = $model->$relation()) instanceof HasOneOrMany) {
-                    switch (get_class($related)) {
-                        case HasOne::class:
-                            /** @var HasOne $related */
-                            $related->save($relationship);
-                            break;
-                        case HasMany::class:
-                            /** @var HasMany $related */
-                            $related->saveMany($relationship);
-                            break;
-                    }
-                } elseif ($related instanceof BelongsToMany) {
-                    $related->attach(array_map(function (Model $model) {
-                        return $model->getKey();
-                    }, $relationship));
+                /** @var Model $relationship */
+
+                switch (get_class($related = $model->$relation())) {
+                    case HasOne::class:
+                        /** @var HasOne $related */
+                        $related->save($relationship);
+                        break;
+                    case HasMany::class:
+                        /** @var HasMany $related */
+                        $related->saveMany($relationship);
+                        break;
+                    case BelongsTo::class:
+                        /** @var BelongsTo $related */
+                        $related->associate($relationship);
+
+                        if (!$relationship->exists) {
+                            $relationship->save();
+                        }
+                        break;
+                    case BelongsToMany::class:
+                        /** @var BelongsToMany $related */
+                        $related->attach(array_map(function (Model $model) {
+                            return $model->getKey();
+                        }, $relationship));
+                        break;
                 }
             }
 
@@ -104,19 +108,12 @@ trait Relaqs
         // Available relations in the given attributes
         if ($fillableRelations = $this->fillableRelationsFromArray($attributes)) {
             // We need to create relationships in strict order
-            foreach (static::$orderedRelations as $relationClass) {
-                // Check this Relation type for the handler presence
-                ($relationHandler = $this->getRelationHandlerName(class_basename($relationClass))) &&
+            $relations = $this->toOrderedRelationsWithHandlers($fillableRelations);
 
-                // Perform relation creating class by class
-                ($relations = $this->filterRelationsByType($relationClass, $fillableRelations)) &&
-
-                // Apply handler to each relation
-                array_walk($relations, function ($relation) use ($relationHandler, &$attributes) {
-                    if ($relationData = $attributes[$relation] ?? false) {
-                        $this->handleRelationship($relationHandler, $relation, $relationData, $attributes);
-                    }
-                });
+            foreach ($relations as $relation => $handler) {
+                if ($relationData = $attributes[$relation] ?? false) {
+                    $this->handleRelationship($handler, $relation, $relationData, $attributes);
+                }
             }
         }
 

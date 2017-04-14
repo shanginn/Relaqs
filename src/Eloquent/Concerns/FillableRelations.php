@@ -84,9 +84,6 @@ trait FillableRelations
         return static::filterRelationsByNames($attributes, $this->getFillableRelations());
     }
 
-
-    /* * */
-
     /**
      * Filters available relations by relation class
      *
