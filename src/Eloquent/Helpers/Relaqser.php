@@ -105,6 +105,11 @@ class Relaqser
         return (int) Request::get('limit', 10);
     }
 
+    public static function getTransformFromRequest()
+    {
+        return Request::get('transform', null);
+    }
+
     /**
      * Converts array keys from snake_case to camelCase
      *
@@ -147,5 +152,24 @@ class Relaqser
         return array_combine(array_map(function ($key) use ($prefix) {
             return $prefix . $key;
         }, array_keys($array)), array_values($array));
+    }
+
+    /**
+     * @param array $array
+     * @return array
+     */
+    public static function removeUnderscoredKeys(array $array)
+    {
+        return array_reduce(array_keys($array), function ($result, $key) use ($array) {
+            if (is_array($value = $array[$key])) {
+                $value = static::removeUnderscoredKeys($value);
+            }
+
+            if ($key[0] !== '_') {
+                $result[$key] = $value;
+            }
+
+            return $result;
+        }, []);
     }
 }
