@@ -68,8 +68,7 @@ trait Relaqs
             );
 
             foreach ($newRelationships as $relation => $relationship) {
-                /** @var Model $relationship */
-
+                /** @var Model|array $relationship */
                 switch (get_class($related = $model->$relation())) {
                     case HasOne::class:
                         /** @var HasOne $related */
@@ -77,7 +76,10 @@ trait Relaqs
                         break;
                     case HasMany::class:
                         /** @var HasMany $related */
-                        $related->saveMany($relationship);
+                        if (is_array($relationship)) {
+                            $related->saveMany($relationship);
+                        }
+
                         break;
                     case BelongsTo::class:
                         /** @var BelongsTo $related */
@@ -88,10 +90,13 @@ trait Relaqs
                         }
                         break;
                     case BelongsToMany::class:
-                        /** @var BelongsToMany $related */
-                        $related->attach(array_map(function (Model $model) {
-                            return $model->getKey();
-                        }, $relationship));
+                        if (is_array($relationship)) {
+                            /** @var BelongsToMany $related */
+                            $related->attach(array_map(function (Model $model) {
+                                return $model->getKey();
+                            }, $relationship));
+                        }
+
                         break;
                 }
             }

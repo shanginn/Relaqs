@@ -5,6 +5,7 @@ namespace Shanginn\Relaqs\Eloquent\Concerns;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Shanginn\Relaqs\Eloquent\Filters\NestedStringFilter;
+use Relaqser;
 
 /**
  * @mixin Model
@@ -12,9 +13,18 @@ use Shanginn\Relaqs\Eloquent\Filters\NestedStringFilter;
  */
 trait RelaqsScopes
 {
-    public static function addFieldsScope($fields)
+    public static function addFieldsScope($fields = null)
     {
         $model = new static;
+
+        if (is_null($fields)) {
+            if ($fields = Relaqser::getFieldsFromRequest()) {
+                $fields = Relaqser::normalizeArray(array_keys($fields), $model);
+            } else {
+                return;
+            }
+        }
+
         $columns = array_values(array_intersect(static::getColumns(), $fields)) + [$model->getKeyName()];
         $with = array_values(array_intersect($fields, array_keys($model->getEagerLoads())));
 

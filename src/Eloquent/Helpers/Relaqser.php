@@ -86,13 +86,36 @@ class Relaqser
             );
         }
 
-        return false;
+        return [];
     }
 
+    /**
+     * @return array|null
+     */
     public static function getFieldsFromRequest()
     {
         return ($fields = Request::get('fields', false)) ?
-            array_flip(explode(',', $fields)) : false;
+            array_reduce(explode(',', $fields), function ($result, $field) {
+                $parts = explode('.', $field);
+
+                // clean up before each pass
+                $array = &$result;
+
+                while ($part = array_shift($parts)) {
+                    $array = &$array[$part];
+                }
+
+                return $result;
+            }, []) : null;
+    }
+
+    /**
+     * @return array|null
+     */
+    public static function getWithFromRequest()
+    {
+        return ($with = Request::get('with', false)) ?
+            explode(' ', $with) : null;
     }
 
     public static function getFilterStringFromRequest()
