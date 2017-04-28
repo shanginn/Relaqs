@@ -95,7 +95,7 @@ trait Relaqs
                     case BelongsToMany::class:
                         if (is_array($relationship)) {
                             /** @var BelongsToMany $related */
-                            $related->attach(array_map(function (Model $model) {
+                            $related->sync(array_map(function (Model $model) {
                                 return $model->getKey();
                             }, $relationship));
                         }
