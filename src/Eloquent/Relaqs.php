@@ -68,6 +68,10 @@ trait Relaqs
             );
 
             foreach ($newRelationships as $relation => $relationship) {
+                if (is_null($relationship)) {
+                    continue;
+                }
+
                 /** @var Model|array $relationship */
                 switch (get_class($related = $model->$relation())) {
                     case HasOne::class:
@@ -84,8 +88,7 @@ trait Relaqs
                     case BelongsTo::class:
                         /** @var BelongsTo $related */
                         $related->associate($relationship);
-
-                        if (!$relationship->exists) {
+                        if (!is_array($relationship) && !$relationship->exists) {
                             $relationship->save();
                         }
                         break;
