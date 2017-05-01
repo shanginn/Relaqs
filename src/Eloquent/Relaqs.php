@@ -81,6 +81,24 @@ trait Relaqs
                     case HasMany::class:
                         /** @var HasMany $related */
                         if (is_array($relationship)) {
+                            $nullable = ! \DB::getDoctrineSchemaManager()
+                                ->listTableDetails($related->getRelated()->getTable())
+                                ->getColumn($related->getForeignKeyName())
+                                ->getNotnull();
+
+                            if (!$nullable) {
+                                $related->delete();
+                            } else {
+                                foreach ($model->$relation as $relatedModel) {
+                                    /** @var Model $relatedModel */
+                                    $relatedModel->setAttribute(
+                                        $related->getForeignKeyName(),
+                                        null
+                                    )->save();
+                                }
+                            }
+
+                            //$model->setRelation($relation, null);
                             $related->saveMany($relationship);
                         }
 
