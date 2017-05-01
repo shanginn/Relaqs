@@ -86,15 +86,19 @@ trait Relaqs
                                 ->getColumn($related->getForeignKeyName())
                                 ->getNotnull();
 
-                            if (!$nullable) {
-                                $related->delete();
-                            } else {
-                                foreach ($model->$relation as $relatedModel) {
+                            $relatedIds = collect($relationship)->pluck('id')->toArray();
+
+                            foreach ($related->get() as $relatedModel) {
+                                if (!in_array($relatedModel->id, $relatedIds)) {
                                     /** @var Model $relatedModel */
-                                    $relatedModel->setAttribute(
-                                        $related->getForeignKeyName(),
-                                        null
-                                    )->save();
+                                    if (!$nullable) {
+                                        $relatedModel->delete();
+                                    } else {
+                                        $relatedModel->setAttribute(
+                                            $related->getForeignKeyName(),
+                                            null
+                                        )->save();
+                                    }
                                 }
                             }
 
