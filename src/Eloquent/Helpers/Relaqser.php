@@ -4,6 +4,7 @@ namespace Shanginn\Relaqs\Eloquent\Helpers;
 
 use Illuminate\Database\Eloquent\Model;
 
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Request;
 
 class Relaqser
@@ -194,5 +195,10 @@ class Relaqser
 
             return $result;
         }, []);
+    }
+
+    public static function getMorphByClass($class)
+    {
+        return array_flip(Relation::morphMap())[$class];
     }
 }
