@@ -102,7 +102,7 @@ trait RelationshipsHandler
     protected function handleRelationship($relationHandler, $relation, $relationData, &$attributes)
     {
         //dump($relationData);
-        // Check if this relationship has been created before
+        // Check if this relationship has been created before in this request
         // And linked with UUID
         ($uuid = $relationData['uuid'] ?? false)
 
@@ -222,6 +222,7 @@ trait RelationshipsHandler
      */
     protected function handleBelongsToMany($relationData, $relation)
     {
+        //dd($relationData)
         $createdRelationships = [];
 
         $this->setRelation($relation, array_map(function ($data) use ($relation, $createdRelationships) {
@@ -317,7 +318,7 @@ trait RelationshipsHandler
     public function createRelatedModel(string $relation, $attributes = [])
     {
         return tap($this->getRelatedModel($relation, $attributes), function (Model $related) {
-            (!$related->exists || $related->isDirty()) && $related->save();
+            $related->save();
         });
     }
 

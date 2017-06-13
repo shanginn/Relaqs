@@ -2,6 +2,7 @@
 
 namespace Shanginn\Relaqs\Eloquent;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasOneOrMany;
 use Illuminate\Database\Eloquent\Model;
 
@@ -115,8 +116,8 @@ trait Relaqs
                         }
                         break;
                     case BelongsToMany::class:
+                        /** @var BelongsToMany $related */
                         if (is_array($relationship)) {
-                            /** @var BelongsToMany $related */
                             $related->sync(array_map(function (Model $model) {
                                 return $model->getKey();
                             }, $relationship));
@@ -141,8 +142,8 @@ trait Relaqs
             $relations = $this->toOrderedRelationsWithHandlers($fillableRelations);
 
             foreach ($relations as $relation => $handler) {
-                if ($relationData = $attributes[$relation] ?? false) {
-                    $this->handleRelationship($handler, $relation, $relationData, $attributes);
+                if (array_key_exists($relation, $attributes)) {
+                    $this->handleRelationship($handler, $relation, $attributes[$relation], $attributes);
                 }
             }
         }
