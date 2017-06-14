@@ -114,6 +114,7 @@ trait Relaqs
                         if (!is_array($relationship) && !$relationship->exists) {
                             $relationship->save();
                         }
+
                         break;
                     case BelongsToMany::class:
                         /** @var BelongsToMany $related */
@@ -121,6 +122,8 @@ trait Relaqs
                             $related->sync(array_map(function (Model $model) {
                                 return $model->getKey();
                             }, $relationship));
+                        } elseif ($relationship instanceof Collection) {
+                            $related->sync($relationship->modelKeys());
                         }
 
                         break;
