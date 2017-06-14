@@ -122,8 +122,6 @@ trait Relaqs
                             $related->sync(array_map(function (Model $model) {
                                 return $model->getKey();
                             }, $relationship));
-                        } elseif ($relationship instanceof Collection) {
-                            $related->sync($relationship->modelKeys());
                         }
 
                         break;
