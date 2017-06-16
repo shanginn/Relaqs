@@ -143,7 +143,8 @@ trait Relaqs
             $relations = $this->toOrderedRelationsWithHandlers($fillableRelations);
 
             foreach ($relations as $relation => $handler) {
-                if (array_key_exists($relation, $attributes)) {
+                // TODO: add ability to reset value with 'null' (move is_null check in another place)
+                if (array_key_exists($relation, $attributes) && !is_null($attributes[$relation])) {
                     $this->handleRelationship($handler, $relation, $attributes[$relation], $attributes);
                 }
             }

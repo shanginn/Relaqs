@@ -55,15 +55,15 @@ trait RelationshipsHandler
             // for method named handleCityRelationship()
            $this->getRelationHandlerByRelationName($relation)
 
-           // Then we will look for handler, specified for the related model
-           // If our 'city' relation refers to 'City' model, we will look
-           // for method named handleRelatedCity()
-           ?? $this->getRelationHandlerByRelatedModelClass($related->getRelated())
+               // Then we will look for handler, specified for the related model
+               // If our 'city' relation refers to 'City' model, we will look
+               // for method named handleRelatedCity()
+               ?? $this->getRelationHandlerByRelatedModelClass($related->getRelated())
 
-           // Lastly we will look for generic handler for this relation type
-           // If the 'city' relation is 'HasMany' relation, we will look
-           // for method named handleHasMany()
-           ?? $this->getRelationHandlerByRelationClass(get_class($related));
+                   // Lastly we will look for generic handler for this relation type
+                   // If the 'city' relation is 'HasMany' relation, we will look
+                   // for method named handleHasMany()
+                   ?? $this->getRelationHandlerByRelationClass(get_class($related));
     }
 
     /**
@@ -173,7 +173,7 @@ trait RelationshipsHandler
 
 
     /**
-     * @param array|int  $relationData
+     * @param array  $relationData
      * @param string $relation
      *
      * @return array
@@ -195,7 +195,7 @@ trait RelationshipsHandler
     }
 
     /**
-     * @param array|int  $relationData
+     * @param array  $relationData
      * @param string $relation
      *
      * @return array
