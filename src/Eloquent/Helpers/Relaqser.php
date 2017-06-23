@@ -32,7 +32,7 @@ class Relaqser
 
         // Convert attributes to snake_case first
         foreach ($attributes as $key => $value) {
-            $result[snake_case($key)] = $value;
+            $result[snake_case($key)] = config('relaqs.nullify_empty_strings') && $value === '' ? null : $value;
         }
 
         // Walk through relations and recursively
