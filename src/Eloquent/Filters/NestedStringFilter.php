@@ -166,6 +166,17 @@ class NestedStringFilter
                         $query->whereIn($column, $value, $boolean, $not ?? false);
 
                         break;
+                    case '!=':
+                        $not = true;
+                        // Proceed just like '='
+                    case '=':
+                        if ($value === 'null') {
+                            $query->whereNull($column, $boolean, $not ?? false);
+                        } else {
+                            // TODO: default action
+                            $query->where($column, $operator, $value, $boolean);
+                        }
+                        break;
                     case '?|':
                     case '?&':
                         $value = sprintf(
@@ -175,6 +186,7 @@ class NestedStringFilter
 
                         // In case of search in array we need to
                         // convert value to PostgreSQL array
+                        // NOTE: NO BREAK HERE!
                     default:
                         $query->where($column, $operator, $value, $boolean);
                 }
