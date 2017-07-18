@@ -15,6 +15,7 @@ class NestedStringFilter
     const AND_SIGN = ',';
     const ESCAPE_CHAR = '\\';
     const ARRAY_DELIMITER = ' ';
+    const NULL_VALUE = self::ESCAPE_CHAR . 'null';
 
     /**
      * Unprocessed string with filters
@@ -143,6 +144,7 @@ class NestedStringFilter
              * @var string $operator
              * @var string $value
              */
+
             $column = snake_case($column);
 
             if (($this->fields[$column] ?? false) === 'jsonb') {
@@ -162,20 +164,36 @@ class NestedStringFilter
                         $not = true;
                         // Proceed just like 'in'
                     case 'in':
-                        $value = explode(static::ARRAY_DELIMITER, $value);
-                        $query->whereIn($column, $value, $boolean, $not ?? false);
+                        $not = $not ?? false;
+                        // Here we need more complex logic for NULL values
+                        $query->where(function (Builder $query) use ($column, $value, $not) {
+                            // First we explode string value into array
+                            $value = explode(static::ARRAY_DELIMITER, $value);
+                            // This is boolean used in inner query
+                            // With 'NOT IN' query we need 'AND'
+                            // And 'OR' otherwise
+                            $innerBoolean = $not ? 'and' : 'or';
 
-                        break;
-                    case '!=':
-                        $not = true;
-                        // Proceed just like '='
-                    case '=':
-                        if ($value === 'null') {
-                            $query->whereNull($column, $boolean, $not ?? false);
-                        } else {
-                            // TODO: default action
-                            $query->where($column, $operator, $value, $boolean);
-                        }
+                            // If there is 'null' value in array, add 'WHERE $column IS [NOT] NULL'
+                            // And unset this 'null' from next 'WHERE $column IN' query
+                            if (false !== $nullIndex = array_search(static::NULL_VALUE, $value)) {
+                                $query->whereNull($column, $innerBoolean, $not);
+                                unset($value[$nullIndex]);
+                            }
+                            // If there is no 'null' in array, we assume that
+                            // $column is nullable, and apply reverse logic
+                            else {
+                                $innerBoolean = $innerBoolean === 'or' ? 'and' : 'or';
+                                $query->whereNull($column, $innerBoolean, !$not);
+                            }
+
+                            // If there was something more than just 'null' in array
+                            if (count($value)) {
+                                $query->whereIn($column, $value, $innerBoolean, $not);
+                            }
+
+                        }, null, null, $boolean);
+
                         break;
                     case '?|':
                     case '?&':
@@ -188,6 +206,9 @@ class NestedStringFilter
                         // convert value to PostgreSQL array
                         // NOTE: NO BREAK HERE!
                     default:
+                        // Replace null string by real null
+                        ($value === static::NULL_VALUE) && $value = null;
+
                         $query->where($column, $operator, $value, $boolean);
                 }
             }
