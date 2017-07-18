@@ -39,6 +39,23 @@ class NestedStringFilter
     protected $fields;
 
     /**
+     * Replacments for filter operators
+     * grouped by column types
+     *
+     * @var array
+     */
+    protected $operatorReplacements = [
+        'jsonb' => [
+            'in' => '?|',
+            'in!' => '?&'
+        ],
+        'array' => [
+            'in' => '&&',
+            'in!' => 'ARRAY_ALL_IN'
+        ]
+    ];
+
+    /**
      * NestedStringFilter constructor.
      *
      * @param string $filterString
@@ -147,15 +164,9 @@ class NestedStringFilter
 
             $column = snake_case($column);
 
-            if (($this->fields[$column] ?? false) === 'jsonb') {
-                switch ($operator) {
-                    case 'in':
-                        $operator = '?|';
-                        break;
-                    case 'in!':
-                        $operator = '?&';
-                        break;
-                }
+            if (($type = $this->fields[$column] ?? false)
+                && array_key_exists(strtolower($type), $this->operatorReplacements)) {
+                $operator = $this->operatorReplacements[strtolower($type)][$operator];
             }
 
             if ($column && $operator && strlen($value)) {
@@ -195,8 +206,13 @@ class NestedStringFilter
                         }, null, null, $boolean);
 
                         break;
+                    case 'ARRAY_ALL_IN':
+                        $operator = '=';
+                        //NOTE: NO BREAK HERE
+                    case '&&':
                     case '?|':
                     case '?&':
+                        // Convert value to postgreSQL array
                         $value = sprintf(
                             '{%s}',
                             str_replace(static::ARRAY_DELIMITER, ',', $value)
