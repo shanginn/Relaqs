@@ -164,10 +164,9 @@ class NestedStringFilter
 
             $column = snake_case($column);
 
-            if (($type = $this->fields[$column] ?? false)
-                && array_key_exists(strtolower($type), $this->operatorReplacements)) {
-                $operator = $this->operatorReplacements[strtolower($type)][$operator];
-            }
+            // Some php7 magic here:
+            // Implicit array keys existence check with ?? operator;
+            $operator = $this->operatorReplacements[strtolower($this->fields[$column])][$operator] ?? $operator;
 
             if ($column && $operator && strlen($value)) {
                 switch ($operator) {
