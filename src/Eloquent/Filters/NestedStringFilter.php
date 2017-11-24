@@ -5,6 +5,8 @@ namespace Shanginn\Relaqs\Eloquent\Filters;
 use Illuminate\Database\Eloquent\Builder;
 use Shanginn\Relaqs\Eloquent\Exceptions\TooMuchColumnDelimitersException;
 use Shanginn\Relaqs\Eloquent\Exceptions\UnbalancedParenthesesException;
+use Shanginn\Relaqs\Events\AfterQueryExecuted;
+use Shanginn\Relaqs\Events\BeforeQueryExecuted;
 
 class NestedStringFilter
 {
@@ -176,9 +178,12 @@ class NestedStringFilter
                     case 'in':
                         $not = $not ?? false;
                         // Here we need more complex logic for NULL values
-                        $query->where(function (Builder $query) use ($column, $value, $not) {
+                        $query->where(function (Builder $query) use ($column, $value, $not, $operator) {
                             // First we explode string value into array
                             $value = explode(static::ARRAY_DELIMITER, $value);
+
+                            event(new BeforeQueryExecuted($column, $operator, $value, $query));
+
                             // This is boolean used in inner query
                             // With 'NOT IN' query we need 'AND'
                             // And 'OR' otherwise
@@ -202,6 +207,8 @@ class NestedStringFilter
                                 $query->whereIn($column, $value, $innerBoolean, $not);
                             }
 
+                            event(new AfterQueryExecuted($column, $operator, $value, $query));
+
                         }, null, null, $boolean);
 
                         break;
@@ -224,7 +231,11 @@ class NestedStringFilter
                         // Replace null string by real null
                         ($value === static::NULL_VALUE) && $value = null;
 
+                        event(new BeforeQueryExecuted($column, $operator, $value, $query));
+
                         $query->where($column, $operator, $value, $boolean);
+
+                        event(new AfterQueryExecuted($column, $operator, $value, $query));
                 }
             }
 
