@@ -3,6 +3,7 @@
 namespace Shanginn\Relaqs\Events;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 
 class BeforeQueryExecuted
 {
@@ -21,12 +22,12 @@ class BeforeQueryExecuted
     /**
      * Create a new event instance.
      *
-     * @param string        $column
-     * @param string        $operator
-     * @param string|array  $value
-     * @param Builder       $query
+     * @param string                $column
+     * @param string                $operator
+     * @param string|array          $value
+     * @param Builder|QueryBuilder  $query
      */
-    public function __construct(&$column, &$operator, &$value, Builder &$query)
+    public function __construct(&$column, &$operator, &$value, &$query)
     {
         $this->column = &$column;
         $this->operator = &$operator;

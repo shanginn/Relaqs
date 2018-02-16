@@ -3,6 +3,7 @@
 namespace Shanginn\Relaqs\Eloquent\Filters;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Shanginn\Relaqs\Eloquent\Exceptions\FieldDoesNotExistsException;
 use Shanginn\Relaqs\Eloquent\Exceptions\TooMuchColumnDelimitersException;
 use Shanginn\Relaqs\Eloquent\Exceptions\UnbalancedParenthesesException;
@@ -77,8 +78,8 @@ class NestedStringFilter
     }
 
     /**
-     * @param Builder|\Illuminate\Database\Query\Builder $query
-     * @return Builder|\Illuminate\Database\Query\Builder
+     * @param Builder|QueryBuilder $query
+     * @return Builder|QueryBuilder
      */
     public function applyTo($query)
     {
@@ -88,8 +89,8 @@ class NestedStringFilter
     }
 
     /**
-     * @param Builder|\Illuminate\Database\Query\Builder $query
-     * @return Builder|\Illuminate\Database\Query\Builder
+     * @param Builder|QueryBuilder $query
+     * @return Builder|QueryBuilder
      * @throws TooMuchColumnDelimitersException
      */
     protected function performOn($query)
@@ -162,7 +163,7 @@ class NestedStringFilter
     }
 
     /**
-     * @param Builder|\Illuminate\Database\Query\Builder $query
+     * @param Builder|QueryBuilder $query
      * @param array $filter
      * @param string $boolean
      */
