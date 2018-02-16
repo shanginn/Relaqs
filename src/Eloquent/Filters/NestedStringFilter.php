@@ -3,6 +3,7 @@
 namespace Shanginn\Relaqs\Eloquent\Filters;
 
 use Illuminate\Database\Eloquent\Builder;
+use Shanginn\Relaqs\Eloquent\Exceptions\FieldDoesNotExistsException;
 use Shanginn\Relaqs\Eloquent\Exceptions\TooMuchColumnDelimitersException;
 use Shanginn\Relaqs\Eloquent\Exceptions\UnbalancedParenthesesException;
 
@@ -32,7 +33,7 @@ class NestedStringFilter
     protected $position = 0;
 
     /**
-     * List of the table fields with types
+     * Assoc array of the table fields with types
      *
      * @var array
      */
@@ -73,14 +74,23 @@ class NestedStringFilter
         $this->fields = $fields;
     }
 
-    public function applyTo(Builder $query)
+    /**
+     * @param Builder|\Illuminate\Database\Query\Builder $query
+     * @return Builder|\Illuminate\Database\Query\Builder
+     */
+    public function applyTo($query)
     {
         // Encapsulated method to prevent unexpected
         // changes of the position.
         return $this->performOn($query);
     }
 
-    protected function performOn(Builder $query)
+    /**
+     * @param Builder|\Illuminate\Database\Query\Builder $query
+     * @return Builder|\Illuminate\Database\Query\Builder
+     * @throws TooMuchColumnDelimitersException
+     */
+    protected function performOn($query)
     {
         // Initial empty filters array
         $filter = $this->initFilterArray();
@@ -149,7 +159,12 @@ class NestedStringFilter
         return $query;
     }
 
-    protected function executeQueryAndResetFilter(Builder $query, array &$filter, string $boolean)
+    /**
+     * @param Builder|\Illuminate\Database\Query\Builder $query
+     * @param array $filter
+     * @param string $boolean
+     */
+    protected function executeQueryAndResetFilter($query, array &$filter, string $boolean)
     {
         // If filter is fully stacked
         // and has 3 extracted variables
@@ -164,7 +179,10 @@ class NestedStringFilter
 
             $column = snake_case($column);
 
-            // Some php7 magic here:
+            if (!array_key_exists($column, $this->fields)) {
+                throw new FieldDoesNotExistsException($column);
+            }
+
             // Implicit array keys existence check with ?? operator;
             $operator = $this->operatorReplacements[strtolower($this->fields[$column])][$operator] ?? $operator;
 
@@ -223,6 +241,7 @@ class NestedStringFilter
                     default:
                         // Replace null string by real null
                         ($value === static::NULL_VALUE) && $value = null;
+
 
                         $query->where($column, $operator, $value, $boolean);
                 }
