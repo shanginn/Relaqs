@@ -110,7 +110,7 @@ class NestedStringFilter
                 // so we call this function recursively
                 // on a newly created nested query
                 case static::OPEN_BRACKET:
-                    $query->where(function (Builder $query) {
+                    $query->where(function ($query) {
                         $this->performOn($query);
                     }, null, null, $nextBoolean);
                     break;
@@ -197,7 +197,7 @@ class NestedStringFilter
                     case 'in':
                         $not = $not ?? false;
                         // Here we need more complex logic for NULL values
-                        $query->where(function (Builder $query) use ($column, $value, $not, $operator) {
+                        $query->where(function ($query) use ($column, $value, $not, $operator) {
                             // First we explode string value into array
                             $value = explode(static::ARRAY_DELIMITER, $value);
 
