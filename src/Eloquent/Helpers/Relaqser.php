@@ -145,8 +145,11 @@ class Relaqser
         return array_reduce(
             array_keys($array),
             function ($result, $key) use ($array) {
-                $result[self::camelizeStr($key)] = is_array($value = $array[$key]) ?
-                    self::camelizeArray($value) : $value;
+                $result[self::camelizeStr($key)] =
+                    // Is value array-like?
+                    (is_array($value = $array[$key]) || is_object($value) && $value = (array) $value) ?
+                        self::camelizeArray($value) : $value;
+
                 return $result;
             },
             []
