@@ -2,6 +2,7 @@
 
 namespace Shanginn\Relaqs\Eloquent\Helpers;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -127,6 +128,17 @@ class Relaqser
     public static function getLimitFromRequest()
     {
         return (int) Request::get('limit', 10);
+    }
+
+    /**
+     * @param Builder $query
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator|\Illuminate\Database\Eloquent\Collection|static[]
+     */
+    public function paginate(Builder $query)
+    {
+        return ($limit = static::getLimitFromRequest()) !== 0 ?
+            $query->paginate($limit) :
+            $query->get();
     }
 
     public static function getTransformFromRequest()
