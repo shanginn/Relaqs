@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Request;
+use Shanginn\Relaqs\Eloquent\Concerns\RelaqsScopes;
+use Shanginn\Relaqs\Eloquent\Interfaces\Filtratable;
 
 class Relaqser
 {
@@ -123,6 +125,17 @@ class Relaqser
     public static function getFilterStringFromRequest()
     {
         return Request::get('filter', '');
+    }
+
+    /**
+     * @param Filtratable $model
+     * @param array $fields
+     */
+    public static function filtrate(Filtratable $model, array $fields)
+    {
+        if ($filters = Relaqser::getFilterStringFromRequest()) {
+            $model::addFiltersScope($filters, $fields);
+        }
     }
 
     public static function getLimitFromRequest()
