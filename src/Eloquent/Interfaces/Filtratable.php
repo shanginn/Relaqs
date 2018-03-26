@@ -4,5 +4,5 @@ namespace Shanginn\Relaqs\Eloquent\Interfaces;
 
 interface Filtratable
 {
-    public static function addFiltersScope($filterString, $fields = []);
+    public static function addFiltersScope($filterString, $fields = [], $ignoreMissingFields = false);
 }

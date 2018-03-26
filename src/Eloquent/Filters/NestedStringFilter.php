@@ -43,6 +43,13 @@ class NestedStringFilter
     protected $fields;
 
     /**
+     * Ignore missing fields or throw an exception
+     *
+     * @var bool
+     */
+    protected $ignoreMissingFields;
+
+    /**
      * Replacments for filter operators
      * grouped by column types
      *
@@ -63,11 +70,13 @@ class NestedStringFilter
      * NestedStringFilter constructor.
      *
      * @param string $filterString
+     * @param array  $fields
+     * @param bool   $ignoreMissingFields
      *
      * @param array $fields
      * @throws UnbalancedParenthesesException
      */
-    public function __construct(string $filterString, array $fields = [])
+    public function __construct(string $filterString, array $fields = [], $ignoreMissingFields = false)
     {
         if (!$this->checkParenthesesBalance($filterString)) {
             throw new UnbalancedParenthesesException;
@@ -75,6 +84,7 @@ class NestedStringFilter
 
         $this->filterString = $filterString;
         $this->fields = $fields;
+        $this->ignoreMissingFields = $ignoreMissingFields;
     }
 
     /**
@@ -183,7 +193,13 @@ class NestedStringFilter
             $column = snake_case($column);
 
             if (!array_key_exists($column, $this->fields)) {
-                throw new FieldDoesNotExistsException($column);
+                if ($this->ignoreMissingFields) {
+                    // Reset filters
+                    $filter = $this->initFilterArray();
+                    return;
+                } else {
+                    throw new FieldDoesNotExistsException($column);
+                }
             }
 
             // Implicit array keys existence check with ?? operator;

@@ -54,10 +54,10 @@ trait RelaqsScopes
         });
     }
 
-    public static function addFiltersScope($filterString, $fields = [])
+    public static function addFiltersScope($filterString, $fields = [], $ignoreMissingFields = false)
     {
-        static::addGlobalScope(function (Builder $builder) use ($filterString, $fields) {
-            (new NestedStringFilter($filterString, $fields))->applyTo($builder);
+        static::addGlobalScope(function (Builder $builder) use ($filterString, $fields, $ignoreMissingFields) {
+            (new NestedStringFilter($filterString, $fields, $ignoreMissingFields))->applyTo($builder);
         });
     }
 }

@@ -134,7 +134,7 @@ class Relaqser
     public static function filtrate(Filtratable $model, array $fields)
     {
         if ($filters = Relaqser::getFilterStringFromRequest()) {
-            $model::addFiltersScope($filters, $fields);
+            $model::addFiltersScope($filters, $fields, Request::get('ignoreMissingFields', false));
         }
     }
 
