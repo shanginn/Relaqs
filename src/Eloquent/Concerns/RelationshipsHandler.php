@@ -101,7 +101,6 @@ trait RelationshipsHandler
 
     protected function handleRelationship($relationHandler, $relation, $relationData, &$attributes)
     {
-        //dump($relationData);
         // Check if this relationship has been created before
         // And linked with UUID
         ($uuid = $relationData['uuid'] ?? false)

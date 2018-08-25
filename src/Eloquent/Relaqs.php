@@ -29,10 +29,10 @@ use Shanginn\Relaqs\Eloquent\Concerns\RelationshipsHandler;
  */
 trait Relaqs
 {
-    use FillableRelations;
-    use GetColumnsTrait;
-    use RelationshipsHandler;
     use RelaqsScopes;
+    use GetColumnsTrait;
+    use FillableRelations;
+    use RelationshipsHandler;
 
     /**
      * The array of uuids of the created models.
