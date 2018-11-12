@@ -182,6 +182,28 @@ class Relaqser
     }
 
     /**
+     * Converts array keys from camelCase to snake_case
+     *
+     * @param array $array
+     * @return array
+     */
+    public static function snakefyArray(array $array)
+    {
+        return array_reduce(
+            array_keys($array),
+            function ($result, $key) use ($array) {
+                $result[snake_case($key)] =
+                    // Is value array-like?
+                    (is_array($value = $array[$key]) || is_object($value) && $value = (array) $value) ?
+                        self::snakefyArray($value) : $value;
+
+                return $result;
+            },
+            []
+        );
+    }
+
+    /**
      * Converts string from snake_case to camelCase
      *
      * @param string $key
