@@ -103,7 +103,6 @@ trait Relaqs
                                 }
                             }
 
-                            //$model->setRelation($relation, null);
                             $related->saveMany($relationship);
                         }
 
@@ -128,7 +127,8 @@ trait Relaqs
                 }
             }
 
-            $model->load(array_keys($newRelationships));
+            // TODO: reload only updated relations
+            $model->refresh();
         });
     }
 
