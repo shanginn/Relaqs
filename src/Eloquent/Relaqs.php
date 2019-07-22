@@ -125,10 +125,12 @@ trait Relaqs
 
                         break;
                 }
+
+                $model->load($relation);
             }
 
             // TODO: reload only updated relations
-            $model->refresh();
+            //$model->refresh();
         });
     }
 
