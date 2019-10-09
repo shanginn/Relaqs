@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Str;
 use Request;
 use Shanginn\Relaqs\Eloquent\Concerns\RelaqsScopes;
 use Shanginn\Relaqs\Eloquent\Interfaces\Filtratable;
@@ -35,7 +36,7 @@ class Relaqser
 
         // Convert attributes to snake_case first
         foreach ($attributes as $key => $value) {
-            $result[snake_case($key)] = config('relaqs.nullify_empty_strings') && $value === '' ? null : $value;
+            $result[Str::snake($key)] = config('relaqs.nullify_empty_strings') && $value === '' ? null : $value;
         }
 
         // Walk through relations and recursively
@@ -82,7 +83,7 @@ class Relaqser
                     list($field, $value['lang']) = strpos($field, '.') ?
                         explode('.', $field) : [$field, $lang];
 
-                    $result[snake_case($field)] = $value;
+                    $result[Str::snake($field)] = $value;
 
                     return $result;
                 },
@@ -192,7 +193,7 @@ class Relaqser
         return array_reduce(
             array_keys($array),
             function ($result, $key) use ($array) {
-                $result[snake_case($key)] =
+                $result[Str::snake($key)] =
                     // Is value array-like?
                     (is_array($value = $array[$key]) || is_object($value) && $value = (array) $value) ?
                         self::snakefyArray($value) : $value;

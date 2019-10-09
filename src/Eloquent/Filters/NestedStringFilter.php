@@ -4,6 +4,7 @@ namespace Shanginn\Relaqs\Eloquent\Filters;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Str;
 use Shanginn\Relaqs\Eloquent\Exceptions\FieldDoesNotExistsException;
 use Shanginn\Relaqs\Eloquent\Exceptions\TooMuchColumnDelimitersException;
 use Shanginn\Relaqs\Eloquent\Exceptions\UnbalancedParenthesesException;
@@ -190,7 +191,7 @@ class NestedStringFilter
              * @var string $value
              */
 
-            $column = snake_case($column);
+            $column = Str::snake($column);
 
             if (!array_key_exists($column, $this->fields)) {
                 if ($this->ignoreMissingFields) {
